@@ -1,0 +1,64 @@
+esphome:
+  name: $device_name
+  platform: $platform
+  board: $board
+
+globals:
+  - id: open_duration
+    type: uint32_t
+    restore_value: no
+    initial_value: $open_duration
+  - id: close_duration
+    type: uint32_t
+    restore_value: no
+    initial_value: $close_duration
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: $open_endstop_pin
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "Open Endstop Sensor"
+    id: open_endstop
+    internal: true
+    filters:
+      - delayed_on_off: $debounce_time
+    
+  - platform: gpio
+    pin:
+      number: $close_endstop_pin
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "Close Endstop Sensor"
+    id: close_endstop
+    internal: true
+    filters:
+      - delayed_on_off: $debounce_time
+
+switch:
+  - platform: gpio
+    pin: $cover_switch_pin
+    name: "Cover Switch"
+    id: cover_switch
+    internal: true
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+    - delay: $active_switch_duration
+    - switch.turn_off: cover_switch
+
+cover:
+  - platform: template
+    name: $device_name
+    id: garage_door
+    device_class : $cover_device_class
+    optimistic: false
+    has_position: true
+    assumed_state: false
+    lambda: |-
+      return {};
+    open_action:
+
+    close_action:
+
+    stop_action:
