@@ -4,7 +4,8 @@ This project uses an esp board, a relay and two reed switches.
 
 ## Cover description
 Cover is controlled with a single button push. Each time the button is pushed, it performs an action according following state machine:  
-open -> stop -> close -> stop -> open
+* Sequence: open -> stop -> close -> stop -> open
+* When cover reach the end (open or close) it counts as a stop action.
 
 ## Project features
 * Position reporting based on time (no position control for now).
