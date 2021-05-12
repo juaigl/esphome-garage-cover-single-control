@@ -59,8 +59,6 @@ binary_sensor:
         - lambda: !lambda |-
             // stop all current actions
             id(push_one).stop();
-            id(push_two).stop();
-            id(push_three).stop();
             id(action_requested) = false;
             // update states
             id(garage_door).current_operation = esphome::cover::COVER_OPERATION_IDLE;
@@ -93,8 +91,6 @@ binary_sensor:
         - lambda: !lambda |-
             // stop all current actions
             id(push_one).stop();
-            id(push_two).stop();
-            id(push_three).stop();
             id(action_requested) = false;
             // update states
             id(garage_door).current_operation = esphome::cover::COVER_OPERATION_IDLE;
@@ -172,114 +168,133 @@ cover:
       last_recompute_time = now;
       return {};
     open_action:
-      - lambda: !lambda |-
-          ESP_LOGD("open_action", "OPEN CO:%u PO:%f LD:%u", id(garage_door).current_operation, id(garage_door).position, id(last_dir));
-          if (id(open_endstop).state || id(garage_door).current_operation == COVER_OPERATION_OPENING || id(push_one).is_running() == true)
-          {
-            // it's open or opening -> do nothing
-            ESP_LOGD("open", "PUSH 0 TIMES");
-          }
-          else
-          {
-            id(action_requested) = true;
-            if (id(garage_door).current_operation == COVER_OPERATION_IDLE) // door stopped
-            {
-              if (id(last_dir) == COVER_OPERATION_CLOSING)
-              {
-                // stopped (last: closing) -> opening
-                id(push_one).execute();
-              }
-              else // MIDDLE_POS && last_dir = OPENING
-              {
-                // stopped (last: opening) -> closing -> stop -> opening
-                id(push_three).execute();
-              }
-            }
-            else // door closing
-            {
-              // closing -> stop -> opening
-              id(push_two).execute();
-            }
-            // update states
-            id(last_dir) = COVER_OPERATION_OPENING;
-            id(garage_door).current_operation = COVER_OPERATION_OPENING;
-            id(garage_door).publish_state();
-          }
+      - logger.log:
+          format: "Open Action - CO:%u PO:%f LD:%u"
+          args: [id(garage_door).current_operation, id(garage_door).position, id(last_dir)]
+      - if:
+          condition:
+            lambda: |-
+              return (id(open_endstop).state || id(garage_door).current_operation == COVER_OPERATION_OPENING || id(push_one).is_running() == true);
+          then:
+            # already open or opening
+            - logger.log: "Push 0 Times"
+          else:
+            - lambda: id(action_requested) = true;
+            - if:
+                condition:
+                  lambda: |-
+                    return id(garage_door).current_operation == COVER_OPERATION_IDLE;
+                then:
+                  - if:
+                      condition:
+                        lambda: |-
+                          return id(last_dir) == COVER_OPERATION_CLOSING;
+                      then:
+                        # stopped (last: closing) -> opening
+                        - script.execute: push_one
+                      else:
+                        # stopped (last: opening) -> closing -> stop -> opening
+                        - script.execute: push_one
+                        - cover.template.publish:
+                            id: garage_door
+                            current_operation: CLOSING
+                        - lambda: id(last_dir) = COVER_OPERATION_CLOSING;
+                        - script.wait: push_one
+                        - script.execute: push_one
+                        - cover.template.publish:
+                            id: garage_door
+                            current_operation: IDLE
+                        - script.wait: push_one
+                        - script.execute: push_one
+                else:
+                  # closing -> stop -> opening
+                  - script.execute: push_one
+                  - cover.template.publish:
+                      id: garage_door
+                      current_operation: IDLE
+                  - script.wait: push_one
+                  - script.execute: push_one
+            # update states
+            - lambda: |-
+                id(last_dir) = COVER_OPERATION_OPENING;
+                id(garage_door).current_operation = COVER_OPERATION_OPENING;
+                id(garage_door).publish_state();
+    
     close_action:
-      - lambda: !lambda |-
-          ESP_LOGD("close_action", "CLOSE CO:%u PO:%f LD:%u", id(garage_door).current_operation, id(garage_door).position, id(last_dir));
-          if (id(close_endstop).state || id(garage_door).current_operation == COVER_OPERATION_CLOSING || id(push_one).is_running() == true)
-          {
-            // closed or closing -> do nothing
-            ESP_LOGD("close", "PUSH 0 TIMES");
-          }
-          else
-          {
-            id(action_requested) = true;
-            if (id(garage_door).current_operation == COVER_OPERATION_IDLE) // door stopped
-            {
-              if (id(last_dir) == COVER_OPERATION_OPENING)
-              {
-                // stopped (last: opening) -> closing
-                id(push_one).execute();
-              }
-              else // MIDDLE_POS && last_dir = CLOSING
-              {
-                // stopped (last: closing) -> opening -> stop -> closing
-                id(push_three).execute();
-              }
-            }
-            else // opening
-            {
-              // opening -> stop -> closing
-              id(push_two).execute();
-            }
-            // update states
-            id(last_dir) = COVER_OPERATION_CLOSING;
-            id(garage_door).current_operation = COVER_OPERATION_CLOSING;
-            id(garage_door).publish_state();
-          }
+      - logger.log:
+          format: "Close Action - CO:%u PO:%f LD:%u"
+          args: [id(garage_door).current_operation, id(garage_door).position, id(last_dir)]
+      - if:
+          condition:
+            lambda: |-
+              return (id(close_endstop).state || id(garage_door).current_operation == COVER_OPERATION_CLOSING || id(push_one).is_running() == true);
+          then:
+            # already closed or closing
+            - logger.log: "Push 0 Times"
+          else:
+            - lambda: id(action_requested) = true;
+            - if:
+                condition:
+                  lambda: |-
+                    return id(garage_door).current_operation == COVER_OPERATION_IDLE;
+                then:
+                  - if:
+                      condition:
+                        lambda: |-
+                          return id(last_dir) == COVER_OPERATION_OPENING;
+                      then:
+                        # stopped (last: opening) -> closing
+                        - script.execute: push_one
+                      else:
+                        # stopped (last: closing) -> opening -> stop -> closing
+                        - script.execute: push_one
+                        - cover.template.publish:
+                            id: garage_door
+                            current_operation: OPENING
+                        - script.wait: push_one
+                        - script.execute: push_one
+                        - cover.template.publish:
+                            id: garage_door
+                            current_operation: IDLE
+                        - script.wait: push_one
+                        - script.execute: push_one
+                else:
+                  # opening -> stop -> closing
+                  - script.execute: push_one
+                  - cover.template.publish:
+                      id: garage_door
+                      current_operation: IDLE
+                  - script.wait: push_one
+                  - script.execute: push_one
+            # update states
+            - lambda: |-
+                id(last_dir) = COVER_OPERATION_CLOSING;
+                id(garage_door).current_operation = COVER_OPERATION_CLOSING;
+                id(garage_door).publish_state();
+
     stop_action:
-      - lambda: !lambda |-
-          ESP_LOGD("stop_action", "STOP CO:%u PO:%f LD:%u", id(garage_door).current_operation, id(garage_door).position, id(last_dir));
-          if (id(garage_door).current_operation != COVER_OPERATION_IDLE && id(push_one).is_running() == false) // door moving
-          {
-            // door not stopped and no action running
-            id(push_one).execute();
-            id(garage_door).current_operation = COVER_OPERATION_IDLE;
-            id(garage_door).publish_state();
-          }
-          else
-          {
-            ESP_LOGD("stop", "PUSH 0 TIMES");
-          }
+      - logger.log:
+          format: "Stop Action - CO:%u PO:%f LD:%u"
+          args: [id(garage_door).current_operation, id(garage_door).position, id(last_dir)]
+      - if:
+          condition:
+            lambda: |-
+              return (id(garage_door).current_operation != COVER_OPERATION_IDLE && id(push_one).is_running() == false);
+          then:
+            # stop cover
+            - script.execute: push_one
+            - cover.template.publish:
+                id: garage_door
+                current_operation: IDLE
+          else:
+            # already stopped or performing dir change
+            - logger.log: "Push 0 Times"
 
 script:
   - id: push_one
     mode: queued
     max_runs: 3
     then:
-      - logger.log: "PUSH 1 TIMES"
+      - logger.log: "Push 1 Times"
       - switch.turn_on: cover_switch
       - delay: $safe_delay
-  
-  - id: push_two
-    then:
-      if:
-        condition:
-          lambda: "return (id(push_one).is_running() == false);"
-        then:
-          - logger.log: "PUSH 2 TIMES"
-          - script.execute: push_one
-          - script.execute: push_one
-  
-  - id: push_three
-    then:
-      if:
-        condition:
-          lambda: "return (id(push_one).is_running() == false);"
-        then:
-          - logger.log: "PUSH 3 TIMES"
-          - script.execute: push_one
-          - script.execute: push_one
-          - script.execute: push_one
