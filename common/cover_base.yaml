@@ -2,11 +2,33 @@ esphome:
   name: $device_name
   platform: $platform
   board: $board
-
+  on_boot:
+    priority: -10
+    then:
+      - lambda: !lambda |-
+          // check cover position
+          if (id(open_endstop).state) // door open
+          {
+            id(garage_door).current_operation = esphome::cover::COVER_OPERATION_IDLE;
+            id(garage_door).position = esphome::cover::COVER_OPEN;
+            id(last_dir) = esphome::cover::COVER_OPERATION_OPENING;
+            id(garage_door).publish_state();
+          }
+          else if (id(close_endstop).state) // door closed
+          {
+            id(garage_door).current_operation = esphome::cover::COVER_OPERATION_IDLE;
+            id(garage_door).position = esphome::cover::COVER_CLOSED;
+            id(last_dir) = esphome::cover::COVER_OPERATION_CLOSING;
+            id(garage_door).publish_state();
+          }
+          else // door neither closed nor open 
+          {
+            // last dir not know, so let cover restore last state
+          }
 globals:
   - id: last_dir
     type: esphome::cover::CoverOperation
-    restore_value: no
+    restore_value: yes
     initial_value: esphome::cover::COVER_OPERATION_IDLE
   - id: action_requested
     type: bool
