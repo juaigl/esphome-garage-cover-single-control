@@ -104,14 +104,14 @@ switch:
     internal: true
     restore_mode: ALWAYS_OFF
     on_turn_on:
-    - delay: $active_switch_duration
-    - switch.turn_off: cover_switch
+      - delay: $active_switch_duration
+      - switch.turn_off: cover_switch
 
 cover:
   - platform: template
     name: $device_name
     id: garage_door
-    device_class : $cover_device_class
+    device_class: $cover_device_class
     optimistic: false
     has_position: true
     assumed_state: false
@@ -150,14 +150,14 @@ cover:
         {
           id(garage_door).publish_state();
           last_publish_time = now;
-        }      
+        }
       }
       last_recompute_time = now;
       return {};
     open_action:
       - logger.log:
           format: "Open Action - CO:%u PO:%f LD:%u"
-          args: [id(garage_door).current_operation, id(garage_door).position, id(last_dir)]
+          args: [ id(garage_door).current_operation, id(garage_door).position, id(last_dir) ]
       - if:
           condition:
             lambda: |-
@@ -176,40 +176,19 @@ cover:
                         lambda: |-
                           return id(last_dir) == COVER_OPERATION_CLOSING;
                       then:
-                        # stopped (last: closing) -> opening
+                        # stopped (last: closing) - 1 action: open
                         - script.execute: push_one
                       else:
-                        # stopped (last: opening) -> closing -> stop -> opening
-                        - script.execute: push_one
-                        - cover.template.publish:
-                            id: garage_door
-                            current_operation: CLOSING
-                        - lambda: id(last_dir) = COVER_OPERATION_CLOSING;
-                        - script.wait: push_one
-                        - script.execute: push_one
-                        - cover.template.publish:
-                            id: garage_door
-                            current_operation: IDLE
-                        - script.wait: push_one
-                        - script.execute: push_one
+                        # stopped (last: opening) - 3 actions: close -> stop -> open
+                        - script.execute: push_three
                 else:
-                  # closing -> stop -> opening
-                  - script.execute: push_one
-                  - cover.template.publish:
-                      id: garage_door
-                      current_operation: IDLE
-                  - script.wait: push_one
-                  - script.execute: push_one
-            # update states
-            - lambda: |-
-                id(last_dir) = COVER_OPERATION_OPENING;
-                id(garage_door).current_operation = COVER_OPERATION_OPENING;
-                id(garage_door).publish_state();
-    
+                  # closing - 2 actions: stop -> open
+                  - script.execute: push_two
+
     close_action:
       - logger.log:
           format: "Close Action - CO:%u PO:%f LD:%u"
-          args: [id(garage_door).current_operation, id(garage_door).position, id(last_dir)]
+          args: [ id(garage_door).current_operation, id(garage_door).position, id(last_dir) ]
       - if:
           condition:
             lambda: |-
@@ -228,51 +207,39 @@ cover:
                         lambda: |-
                           return id(last_dir) == COVER_OPERATION_OPENING;
                       then:
-                        # stopped (last: opening) -> closing
+                        # stopped (last: opening) - 1 action: close
                         - script.execute: push_one
                       else:
-                        # stopped (last: closing) -> opening -> stop -> closing
-                        - script.execute: push_one
-                        - cover.template.publish:
-                            id: garage_door
-                            current_operation: OPENING
-                        - script.wait: push_one
-                        - script.execute: push_one
-                        - cover.template.publish:
-                            id: garage_door
-                            current_operation: IDLE
-                        - script.wait: push_one
-                        - script.execute: push_one
+                        # stopped (last: closing) - 3 actions: -> open -> stop -> close
+                        - script.stop: push_one
+                        - script.stop: push_one
+                        - script.stop: push_one
                 else:
-                  # opening -> stop -> closing
-                  - script.execute: push_one
-                  - cover.template.publish:
-                      id: garage_door
-                      current_operation: IDLE
-                  - script.wait: push_one
-                  - script.execute: push_one
-            # update states
-            - lambda: |-
-                id(last_dir) = COVER_OPERATION_CLOSING;
-                id(garage_door).current_operation = COVER_OPERATION_CLOSING;
-                id(garage_door).publish_state();
+                  # opening - 2 actions: stop -> close
+                  - script.stop: push_one
+                  - script.stop: push_one
 
     stop_action:
       - logger.log:
           format: "Stop Action - CO:%u PO:%f LD:%u"
-          args: [id(garage_door).current_operation, id(garage_door).position, id(last_dir)]
+          args: [ id(garage_door).current_operation, id(garage_door).position, id(last_dir) ]
       - if:
+          # cancel all current actions
           condition:
             lambda: |-
-              return (id(garage_door).current_operation != COVER_OPERATION_IDLE && id(push_one).is_running() == false);
+              return id(push_one).is_running() == true;
           then:
-            # stop cover
+            - script.stop: push_one
+            - logger.log: "All pending actions cancelled"
+      - if:
+          # stop cover if not stopped
+          condition:
+            lambda: |-
+              return id(garage_door).current_operation != COVER_OPERATION_IDLE;
+          then:
             - script.execute: push_one
-            - cover.template.publish:
-                id: garage_door
-                current_operation: IDLE
           else:
-            # already stopped or performing dir change
+            # already stopped
             - logger.log: "Push 0 Times"
 
 script:
@@ -282,4 +249,24 @@ script:
     then:
       - logger.log: "Push 1 Times"
       - switch.turn_on: cover_switch
+      # state machine
+      - lambda: |-
+          if (id(garage_door).current_operation == esphome::cover::COVER_OPERATION_OPENING || id(garage_door).current_operation == esphome::cover::COVER_OPERATION_CLOSING)
+          {
+            id(garage_door).current_operation = esphome::cover::COVER_OPERATION_IDLE;
+          }
+          else (id(garage_door).current_operation == esphome::cover::COVER_OPERATION_IDLE)
+          {
+            if (id(last_dir) == esphome::cover::COVER_OPERATION_OPENING)
+            {
+              id(garage_door).current_operation = esphome::cover::COVER_OPERATION_CLOSING;
+              id(last_dir) = COVER_OPERATION_CLOSING;
+            }
+            else
+            {
+              id(garage_door).current_operation = esphome::cover::COVER_OPERATION_OPENING;
+              id(last_dir) = COVER_OPERATION_OPENING;
+            }
+          }
+          id(garage_door).publish_state();
       - delay: $safe_delay

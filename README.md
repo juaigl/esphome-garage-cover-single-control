@@ -32,5 +32,5 @@ Note: secrets.yaml will inherit all your data from home assistant secrets.yaml. 
 ```
 
 ## TODO
+* Store target action and perform action in main loop instead of on_action
 * Position control
-* Increase position accuracy when button is pushed more than once (need ability to wait for a script to finish)
