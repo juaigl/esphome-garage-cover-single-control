@@ -31,14 +31,15 @@ logger:
   # level: DEBUG
 
 # debug switch for logging
-  # - platform: template
-  #   name: "log it"
-  #   id: log_it
-  #   lambda: !lambda |-
-  #     return true;
-  #   turn_on_action:
-  #     - lambda: !lambda |-
-  #         ESP_LOGD("log_it", "LOG CO:%u PO:%f LD:%u", id(garage_door).current_operation,  id(garage_door).position, id(last_dir));
-  #   turn_off_action:
-  #     - lambda: !lambda |-
-  #         ESP_LOGD("log_it", "LOG CO:%u PO:%f LD:%u", id(garage_door).current_operation,  id(garage_door).position, id(last_dir));
+# switch:
+#   - platform: template
+#     name: "log it"
+#     id: log_it
+#     lambda: !lambda |-
+#       return true;
+#     turn_on_action:
+#       - lambda: !lambda |-
+#           ESP_LOGD("log_it", "LOG CO:%u PO:%f LD:%u", id(garage_door).current_operation,  id(garage_door).position, id(last_dir));
+#     turn_off_action:
+#       - lambda: !lambda |-
+#           ESP_LOGD("log_it", "LOG CO:%u PO:%f LD:%u", id(garage_door).current_operation,  id(garage_door).position, id(last_dir));
