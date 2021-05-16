@@ -12,7 +12,7 @@ substitutions:
   # switch config
   cover_switch_pin: GPIO2 # gpio pin that trigger the door opening/closing/stop
   active_switch_duration: 100ms # amount of time relay is closed
-  safe_delay: 1500ms # safe time between relay activations
+  $push_interval: "1500" # safe time between relay activations in ms
 
   # endstop config
   open_endstop_pin: GPIO5 # gpio pin for open endstop sensor
@@ -31,14 +31,15 @@ logger:
   # level: DEBUG
 
 # debug switch for logging
-  # - platform: template
-  #   name: "log it"
-  #   id: log_it
-  #   lambda: !lambda |-
-  #     return true;
-  #   turn_on_action:
-  #     - lambda: !lambda |-
-  #         ESP_LOGD("log_it", "LOG CO:%u PO:%f LD:%u", id(garage_door).current_operation,  id(garage_door).position, id(last_dir));
-  #   turn_off_action:
-  #     - lambda: !lambda |-
-  #         ESP_LOGD("log_it", "LOG CO:%u PO:%f LD:%u", id(garage_door).current_operation,  id(garage_door).position, id(last_dir));
+# switch:
+#   - platform: template
+#     name: "log it"
+#     id: log_it
+#     lambda: !lambda |-
+#       return true;
+#     turn_on_action:
+#       - lambda: !lambda |-
+#           ESP_LOGD("log_it", "LOG CO:%u PO:%f LD:%u", id(garage_door).current_operation,  id(garage_door).position, id(last_dir));
+#     turn_off_action:
+#       - lambda: !lambda |-
+#           ESP_LOGD("log_it", "LOG CO:%u PO:%f LD:%u", id(garage_door).current_operation,  id(garage_door).position, id(last_dir));

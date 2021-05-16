@@ -2,16 +2,42 @@ esphome:
   name: $device_name
   platform: $platform
   board: $board
-
+  on_boot:
+    priority: -10
+    then:
+      - lambda: |-
+          // check cover position
+          if (id(open_endstop).state) // door open
+          {
+            id(garage_door).current_operation = esphome::cover::COVER_OPERATION_IDLE;
+            id(garage_door).position = esphome::cover::COVER_OPEN;
+            id(last_dir) = esphome::cover::COVER_OPERATION_OPENING;
+            id(garage_door).publish_state();
+          }
+          else if (id(close_endstop).state) // door closed
+          {
+            id(garage_door).current_operation = esphome::cover::COVER_OPERATION_IDLE;
+            id(garage_door).position = esphome::cover::COVER_CLOSED;
+            id(last_dir) = esphome::cover::COVER_OPERATION_CLOSING;
+            id(garage_door).publish_state();
+          }
+          else // door neither closed nor open 
+          {
+            // last dir not know, so let cover restore last state
+          }
 globals:
   - id: last_dir
     type: esphome::cover::CoverOperation
-    restore_value: no
+    restore_value: yes
     initial_value: esphome::cover::COVER_OPERATION_IDLE
-  - id: action_requested
-    type: bool
+  - id: target_action
+    type: int
     restore_value: no
-    initial_value: "false"
+    initial_value: "3" # Idle: 0, Open: 1, Close: 2, None: 3
+  - id: push_interval
+    type: int
+    restore_value: no
+    initial_value: $push_interval
   - id: open_duration
     type: uint32_t
     restore_value: no
@@ -34,28 +60,23 @@ binary_sensor:
       - delayed_on_off: $debounce_time
     on_press:
       then:
-        - lambda: !lambda |-
+        - lambda: |-
             // stop all current actions
             id(push_one).stop();
-            id(push_two).stop();
-            id(push_three).stop();
-            id(action_requested) = false;
             // update states
             id(garage_door).current_operation = esphome::cover::COVER_OPERATION_IDLE;
             id(garage_door).position = esphome::cover::COVER_OPEN;
             id(last_dir) = esphome::cover::COVER_OPERATION_OPENING;
             id(garage_door).publish_state();
     on_release:
+      # door was commanded manually (not esphome)
       then:
-        - lambda: !lambda |-
-            // if door was commanded manually (not esphome)
-            if (!id(action_requested))
-            {
-              // dst state as closing. This will start position update and reporting
-              id(garage_door).current_operation = esphome::cover::COVER_OPERATION_CLOSING;
-              id(garage_door).publish_state();
-            }
-            id(action_requested) = false;
+        - lambda: |-          
+            // set state as closing. This will start position update and reporting
+            id(last_dir) = esphome::cover::COVER_OPERATION_CLOSING;
+            id(garage_door).current_operation = esphome::cover::COVER_OPERATION_CLOSING;
+            id(garage_door).publish_state();
+
   - platform: gpio
     pin:
       number: $close_endstop_pin
@@ -68,28 +89,22 @@ binary_sensor:
       - delayed_on_off: $debounce_time
     on_press:
       then:
-        - lambda: !lambda |-
+        - lambda: |-
             // stop all current actions
             id(push_one).stop();
-            id(push_two).stop();
-            id(push_three).stop();
-            id(action_requested) = false;
             // update states
             id(garage_door).current_operation = esphome::cover::COVER_OPERATION_IDLE;
             id(garage_door).position = esphome::cover::COVER_CLOSED;
             id(last_dir) = esphome::cover::COVER_OPERATION_CLOSING;
             id(garage_door).publish_state();
     on_release:
+      # door was commanded manually (not esphome)
       then:
-        - lambda: !lambda |-
-            // if door was commanded manually (not esphome)
-            if (!id(action_requested))
-            {
-               // set state as opening. This will start position update and reporting
-              id(garage_door).current_operation = esphome::cover::COVER_OPERATION_OPENING;
-              id(garage_door).publish_state();
-            }
-            id(action_requested) = false;
+        - lambda: |-
+            // set state as opening. This will start position update and reporting
+            id(last_dir) = esphome::cover::COVER_OPERATION_OPENING;
+            id(garage_door).current_operation = esphome::cover::COVER_OPERATION_OPENING;
+            id(garage_door).publish_state();
 
 switch:
   - platform: gpio
@@ -99,22 +114,25 @@ switch:
     internal: true
     restore_mode: ALWAYS_OFF
     on_turn_on:
-    - delay: $active_switch_duration
-    - switch.turn_off: cover_switch
+      - delay: $active_switch_duration
+      - switch.turn_off: cover_switch
 
 cover:
   - platform: template
     name: $device_name
     id: garage_door
-    device_class : $cover_device_class
+    device_class: $cover_device_class
     optimistic: false
     has_position: true
     assumed_state: false
+    # main loop
     lambda: |-
       static uint32_t last_recompute_time = 0;
       static uint32_t last_publish_time = 0;
+      static uint32_t last_push_time = 0;
       // store current time
       const uint32_t now = millis();
+
       // recompute position
       if (id(garage_door).current_operation != COVER_OPERATION_IDLE)  // Door moving
       {
@@ -123,18 +141,15 @@ cover:
         // set dir and duration depending on current movement
         if (id(garage_door).current_operation == COVER_OPERATION_CLOSING)
         {
+          // door closing
           dir = -1.0f;
           action_dur = id(close_duration);
         }
-        else if (id(garage_door).current_operation == COVER_OPERATION_OPENING)
-        {
-          dir = 1.0f;
-          action_dur = id(open_duration);
-        }
         else
         {
-          // This should not be reached (maybe on first init when previous operations ar not known). Keep here for security
-          return {};
+          // door opening
+          dir = 1.0f;
+          action_dur = id(open_duration);
         }
         // calculate position
         float position = id(garage_door).position;
@@ -145,119 +160,76 @@ cover:
         {
           id(garage_door).publish_state();
           last_publish_time = now;
-        }      
+        }
       }
       last_recompute_time = now;
+
+      // push button if target action different than current operation
+      if (id(target_action) != 3 && id(target_action) != id(garage_door).current_operation)
+      {
+        if (now - last_push_time > id(push_interval))
+        {
+          id(push_one).execute();
+          last_push_time = now;
+        }
+      }
+      else if (id(target_action) == id(garage_door).current_operation)
+      {
+        // target reached, set target as None (3).
+        ESP_LOGD("target", "Target Reached");
+        id(target_action) = 3;
+      }
+
       return {};
     open_action:
-      - lambda: !lambda |-
-          ESP_LOGD("open_action", "OPEN CO:%u PO:%f LD:%u", id(garage_door).current_operation, id(garage_door).position, id(last_dir));
-          if (id(open_endstop).state || id(garage_door).current_operation == COVER_OPERATION_OPENING || id(push_one).is_running() == true)
-          {
-            // it's open or opening -> do nothing
-            ESP_LOGD("open", "PUSH 0 TIMES");
-          }
-          else
-          {
-            id(action_requested) = true;
-            if (id(garage_door).current_operation == COVER_OPERATION_IDLE) // door stopped
-            {
-              if (id(last_dir) == COVER_OPERATION_CLOSING)
-              {
-                // stopped (last: closing) -> opening
-                id(push_one).execute();
-              }
-              else // MIDDLE_POS && last_dir = OPENING
-              {
-                // stopped (last: opening) -> closing -> stop -> opening
-                id(push_three).execute();
-              }
-            }
-            else // door closing
-            {
-              // closing -> stop -> opening
-              id(push_two).execute();
-            }
-            // update states
-            id(last_dir) = COVER_OPERATION_OPENING;
-            id(garage_door).current_operation = COVER_OPERATION_OPENING;
-            id(garage_door).publish_state();
-          }
+      - logger.log:
+          format: "Open Action - CO:%u PO:%f LD:%u"
+          args: [ id(garage_door).current_operation, id(garage_door).position, id(last_dir) ]
+      # update target
+      - lambda: |-
+          id(target_action) = COVER_OPERATION_OPENING;
+
     close_action:
-      - lambda: !lambda |-
-          ESP_LOGD("close_action", "CLOSE CO:%u PO:%f LD:%u", id(garage_door).current_operation, id(garage_door).position, id(last_dir));
-          if (id(close_endstop).state || id(garage_door).current_operation == COVER_OPERATION_CLOSING || id(push_one).is_running() == true)
-          {
-            // closed or closing -> do nothing
-            ESP_LOGD("close", "PUSH 0 TIMES");
-          }
-          else
-          {
-            id(action_requested) = true;
-            if (id(garage_door).current_operation == COVER_OPERATION_IDLE) // door stopped
-            {
-              if (id(last_dir) == COVER_OPERATION_OPENING)
-              {
-                // stopped (last: opening) -> closing
-                id(push_one).execute();
-              }
-              else // MIDDLE_POS && last_dir = CLOSING
-              {
-                // stopped (last: closing) -> opening -> stop -> closing
-                id(push_three).execute();
-              }
-            }
-            else // opening
-            {
-              // opening -> stop -> closing
-              id(push_two).execute();
-            }
-            // update states
-            id(last_dir) = COVER_OPERATION_CLOSING;
-            id(garage_door).current_operation = COVER_OPERATION_CLOSING;
-            id(garage_door).publish_state();
-          }
+      - logger.log:
+          format: "Close Action - CO:%u PO:%f LD:%u"
+          args: [ id(garage_door).current_operation, id(garage_door).position, id(last_dir) ]
+      # update target
+      - lambda: |-
+          id(target_action) = COVER_OPERATION_CLOSING;
+
     stop_action:
-      - lambda: !lambda |-
-          ESP_LOGD("stop_action", "STOP CO:%u PO:%f LD:%u", id(garage_door).current_operation, id(garage_door).position, id(last_dir));
-          if (id(garage_door).current_operation != COVER_OPERATION_IDLE && id(push_one).is_running() == false) // door moving
-          {
-            // door not stopped and no action running
-            id(push_one).execute();
-            id(garage_door).current_operation = COVER_OPERATION_IDLE;
-            id(garage_door).publish_state();
-          }
-          else
-          {
-            ESP_LOGD("stop", "PUSH 0 TIMES");
-          }
+      - logger.log:
+          format: "Stop Action - CO:%u PO:%f LD:%u"
+          args: [ id(garage_door).current_operation, id(garage_door).position, id(last_dir) ]
+      # update target
+      - lambda: |-
+          id(target_action) = COVER_OPERATION_IDLE;
 
 script:
   - id: push_one
-    mode: queued
-    max_runs: 3
+    mode: single
     then:
-      - logger.log: "PUSH 1 TIMES"
+      - logger.log: "Push 1 Times"
       - switch.turn_on: cover_switch
-      - delay: $safe_delay
-  
-  - id: push_two
-    then:
-      if:
-        condition:
-          lambda: "return (id(push_one).is_running() == false);"
-        then:
-          - logger.log: "PUSH 2 TIMES"
-          - script.execute: push_one
-          - script.execute: push_one
-  
-  - id: push_three
-    then:
-      if:
-        condition:
-          lambda: "return (id(push_one).is_running() == false);"
-        then:
-          - logger.log: "PUSH 3 TIMES"
-          - script.execute: push_one
-          - script.execute: push_one
-          - script.execute: push_one
+      # state machine
+      - lambda: |-
+          if (id(garage_door).current_operation == esphome::cover::COVER_OPERATION_OPENING || id(garage_door).current_operation == esphome::cover::COVER_OPERATION_CLOSING)
+          {
+            // door moving
+            id(garage_door).current_operation = esphome::cover::COVER_OPERATION_IDLE;
+          }
+          else
+          {
+            // door idle
+            if (id(last_dir) == esphome::cover::COVER_OPERATION_OPENING)
+            {
+              id(garage_door).current_operation = esphome::cover::COVER_OPERATION_CLOSING;
+              id(last_dir) = esphome::cover::COVER_OPERATION_CLOSING;
+            }
+            else
+            {
+              id(garage_door).current_operation = esphome::cover::COVER_OPERATION_OPENING;
+              id(last_dir) = esphome::cover::COVER_OPERATION_OPENING;
+            }
+          }
+          id(garage_door).publish_state();
