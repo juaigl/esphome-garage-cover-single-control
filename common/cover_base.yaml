@@ -30,6 +30,14 @@ globals:
     type: esphome::cover::CoverOperation
     restore_value: yes
     initial_value: esphome::cover::COVER_OPERATION_IDLE
+  - id: target_action
+    type: int
+    restore_value: no
+    initial_value: "3" # Idle: 0, Open: 1, Close: 2, None: 3
+  - id: push_interval
+    type: int
+    restore_value: no
+    initial_value: $push_interval
   - id: open_duration
     type: uint32_t
     restore_value: no
@@ -117,11 +125,14 @@ cover:
     optimistic: false
     has_position: true
     assumed_state: false
+    # main loop
     lambda: |-
       static uint32_t last_recompute_time = 0;
       static uint32_t last_publish_time = 0;
+      static uint32_t last_push_time = 0;
       // store current time
       const uint32_t now = millis();
+
       // recompute position
       if (id(garage_door).current_operation != COVER_OPERATION_IDLE)  // Door moving
       {
@@ -130,18 +141,15 @@ cover:
         // set dir and duration depending on current movement
         if (id(garage_door).current_operation == COVER_OPERATION_CLOSING)
         {
+          // door closing
           dir = -1.0f;
           action_dur = id(close_duration);
         }
-        else if (id(garage_door).current_operation == COVER_OPERATION_OPENING)
-        {
-          dir = 1.0f;
-          action_dur = id(open_duration);
-        }
         else
         {
-          // This should not be reached (maybe on first init when previous operations ar not known). Keep here for security
-          return {};
+          // door opening
+          dir = 1.0f;
+          action_dur = id(open_duration);
         }
         // calculate position
         float position = id(garage_door).position;
@@ -155,99 +163,51 @@ cover:
         }
       }
       last_recompute_time = now;
+
+      // push button if target action different than current operation
+      if (id(target_action) != 3 && id(target_action) != id(garage_door).current_operation)
+      {
+        if (now - last_push_time > id(push_interval))
+        {
+          id(push_one).execute();
+          last_push_time = now;
+        }
+      }
+      else if (id(target_action) == id(garage_door).current_operation)
+      {
+        // target reached, set target as None (3).
+        ESP_LOGD("target", "Target Reached");
+        id(target_action) = 3;
+      }
+
       return {};
     open_action:
       - logger.log:
           format: "Open Action - CO:%u PO:%f LD:%u"
           args: [ id(garage_door).current_operation, id(garage_door).position, id(last_dir) ]
-      - if:
-          condition:
-            lambda: |-
-              return (id(open_endstop).state || id(garage_door).current_operation == COVER_OPERATION_OPENING || id(push_one).is_running() == true);
-          then:
-            # already open or opening
-            - logger.log: "Push 0 Times"
-          else:
-            - if:
-                condition:
-                  lambda: |-
-                    return id(garage_door).current_operation == COVER_OPERATION_IDLE;
-                then:
-                  - if:
-                      condition:
-                        lambda: |-
-                          return id(last_dir) == COVER_OPERATION_CLOSING;
-                      then:
-                        # stopped (last: closing) - 1 action: open
-                        - script.execute: push_one
-                      else:
-                        # stopped (last: opening) - 3 actions: close -> stop -> open
-                        - script.execute: push_three
-                else:
-                  # closing - 2 actions: stop -> open
-                  - script.execute: push_two
+      # update target
+      - lambda: |-
+          id(target_action) = COVER_OPERATION_OPENING;
 
     close_action:
       - logger.log:
           format: "Close Action - CO:%u PO:%f LD:%u"
           args: [ id(garage_door).current_operation, id(garage_door).position, id(last_dir) ]
-      - if:
-          condition:
-            lambda: |-
-              return (id(close_endstop).state || id(garage_door).current_operation == COVER_OPERATION_CLOSING || id(push_one).is_running() == true);
-          then:
-            # already closed or closing
-            - logger.log: "Push 0 Times"
-          else:
-            - if:
-                condition:
-                  lambda: |-
-                    return id(garage_door).current_operation == COVER_OPERATION_IDLE;
-                then:
-                  - if:
-                      condition:
-                        lambda: |-
-                          return id(last_dir) == COVER_OPERATION_OPENING;
-                      then:
-                        # stopped (last: opening) - 1 action: close
-                        - script.execute: push_one
-                      else:
-                        # stopped (last: closing) - 3 actions: -> open -> stop -> close
-                        - script.stop: push_one
-                        - script.stop: push_one
-                        - script.stop: push_one
-                else:
-                  # opening - 2 actions: stop -> close
-                  - script.stop: push_one
-                  - script.stop: push_one
+      # update target
+      - lambda: |-
+          id(target_action) = COVER_OPERATION_CLOSING;
 
     stop_action:
       - logger.log:
           format: "Stop Action - CO:%u PO:%f LD:%u"
           args: [ id(garage_door).current_operation, id(garage_door).position, id(last_dir) ]
-      - if:
-          # cancel all current actions
-          condition:
-            lambda: |-
-              return id(push_one).is_running() == true;
-          then:
-            - script.stop: push_one
-            - logger.log: "All pending actions cancelled"
-      - if:
-          # stop cover if not stopped
-          condition:
-            lambda: |-
-              return id(garage_door).current_operation != COVER_OPERATION_IDLE;
-          then:
-            - script.execute: push_one
-          else:
-            # already stopped
-            - logger.log: "Push 0 Times"
+      # update target
+      - lambda: |-
+          id(target_action) = COVER_OPERATION_IDLE;
 
 script:
   - id: push_one
-    mode: queued
-    max_runs: 3
+    mode: single
     then:
       - logger.log: "Push 1 Times"
       - switch.turn_on: cover_switch
@@ -273,4 +233,3 @@ script:
             }
           }
           id(garage_door).publish_state();
-      - delay: $safe_delay
