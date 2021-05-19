@@ -1,13 +1,16 @@
-# ESPHome Single Button Cover
+# ESPHome Garage Cover Single Control
 
 Project to control a garage cover or gate with [ESPHome](https://esphome.io/)
 and [Home Assistant](https://www.home-assistant.io/).
 
-This project uses an esp board, a relay and two reed switches.
+This project uses:
+* Esp board [compatible](https://esphome.io/#devices) with ESPHome
+* Relay to activate the cover control
+* Two reed switches to detect end positions of the door.
 
 ## Cover description
 
-Cover is controlled with a single button push. Each time the button is pushed, it performs an action according following
+Cover is controlled with a single control using a relay. Each time the control is activated, it performs an action according following
 state machine:
 
 * Sequence: open -> stop -> close -> stop -> open
@@ -16,9 +19,10 @@ state machine:
 ## Project features
 
 * Position reporting based on time (no position control for now)
-* Calculate the number of times the button need to be pushed to perform the action requested
-* Detect and update position when the cover is externally commanded when full open or closed
-* Configuration options for GPIOs, debounce time, open/close durations. time between clicks...
+* Calculate the number of times the control need to be activated to perform the action requested
+* Actuate the door many times as needed to perform requested action. For example if position in memory is wrong or unknow because a external control stops the door at middle.
+* Detect and update position when the cover is externally commanded. Only if door is full open or closed when commanded or reachs end stop sensors.
+* Configuration options for GPIOs, debounce time, open/close durations. time between control actuation...
 
 ## Instructions
 
@@ -42,7 +46,15 @@ your home assistant secrets.yaml. If you want to change this behavior, delete th
 <<: !include ../../secrets.yaml
 ```
 
+## Code
+
+The code is divided in packages to allow easy configuration and reutilization.  
+[cover.yaml](cover.yaml) is the main file that contains configuration options and import the used packages.
+
+The door logic is placed at file [config_base.yaml](common/config_base.yaml)
+
 ## TODO
 
 * Migrate to custom component
+* Detect if door is stopped at middle when commanded externally
 * Position control
