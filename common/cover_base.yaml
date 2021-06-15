@@ -71,7 +71,7 @@ binary_sensor:
     on_release:
       # door was commanded manually (not esphome)
       then:
-        - lambda: |-          
+        - lambda: |-
             // set state as closing. This will start position update and reporting
             id(last_dir) = esphome::cover::COVER_OPERATION_CLOSING;
             id(garage_door).current_operation = esphome::cover::COVER_OPERATION_CLOSING;

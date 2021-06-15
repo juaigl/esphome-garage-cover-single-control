@@ -39,7 +39,7 @@ wifi_password: your wifi password
 You can change the name of the previous variables editing config_base.yaml and wifi_base.yaml
 
 Note: secrets.yaml will inherit all your data from home assistant secrets.yaml. It's possible that you need to
-edit [this line](https://github.com/juaigl/esphome-single-button-cover/blob/master/common/secrets.yaml#L1) to point yo
+edit [this line](https://github.com/juaigl/esphome-single-button-cover/blob/master/common/secrets.yaml#L1) to point to
 your home assistant secrets.yaml. If you want to change this behavior, delete the line and define the variables there.
 
 ```yaml
