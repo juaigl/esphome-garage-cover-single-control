@@ -187,7 +187,10 @@ cover:
           args: [ id(garage_door).current_operation, id(garage_door).position, id(last_dir) ]
       # update target
       - lambda: |-
-          id(target_action) = COVER_OPERATION_OPENING;
+          if (id(garage_door).position != COVER_OPEN)
+          {
+            id(target_action) = COVER_OPERATION_OPENING;
+          }
 
     close_action:
       - logger.log:
@@ -195,7 +198,10 @@ cover:
           args: [ id(garage_door).current_operation, id(garage_door).position, id(last_dir) ]
       # update target
       - lambda: |-
-          id(target_action) = COVER_OPERATION_CLOSING;
+          if (id(garage_door).position != COVER_CLOSED)
+          {
+            id(target_action) = COVER_OPERATION_CLOSING;
+          }
 
     stop_action:
       - logger.log:
@@ -203,7 +209,10 @@ cover:
           args: [ id(garage_door).current_operation, id(garage_door).position, id(last_dir) ]
       # update target
       - lambda: |-
-          id(target_action) = COVER_OPERATION_IDLE;
+          if (id(garage_door).position != COVER_OPEN && id(garage_door).position != COVER_CLOSED)
+          {
+            id(target_action) = COVER_OPERATION_IDLE;
+          }
 
 script:
   - id: push_one
