@@ -4,30 +4,6 @@ esphome:
   board: $board
   includes:
     - common/cover_base.h
-  on_boot:
-    priority: -10
-    then:
-      - lambda: |-
-          // check cover position
-          auto custom_door = static_cast<CustomGarageCover *>(id(garage_door));
-          if (id(open_endstop).state) // door open
-          {
-            custom_door->current_operation = esphome::cover::COVER_OPERATION_IDLE;
-            custom_door->position = esphome::cover::COVER_OPEN;
-            custom_door->last_dir = esphome::cover::COVER_OPERATION_OPENING;
-            custom_door->publish_state();
-          }
-          else if (id(close_endstop).state) // door closed
-          {
-            custom_door->current_operation = esphome::cover::COVER_OPERATION_IDLE;
-            custom_door->position = esphome::cover::COVER_CLOSED;
-            custom_door->last_dir = esphome::cover::COVER_OPERATION_CLOSING;
-            custom_door->publish_state();
-          }
-          else // door neither closed nor open 
-          {
-            // last dir not know, so let cover restore last state
-          }
 
 binary_sensor:
   - platform: gpio
@@ -92,9 +68,10 @@ switch:
 cover:
   - platform: custom
     lambda: |-
-      auto my_sensor = new CustomGarageCover(id(cover_switch), $push_interval, $open_duration, $close_duration);
-      App.register_component(my_sensor);
-      return {my_sensor};
+      auto my_cover = new CustomGarageCover(id(cover_switch), id(open_endstop), id(close_endstop));
+      my_cover->set_door_timings($push_interval, $open_duration, $close_duration);
+      App.register_component(my_cover);
+      return {my_cover};
 
     covers:
       - name: $device_name

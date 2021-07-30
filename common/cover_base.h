@@ -13,20 +13,53 @@ class CustomGarageCover : public Component, public Cover
 {
 public:
     // Constructor
-    CustomGarageCover(Switch *door_switch, uint32_t switch_interval, uint32_t open_duration, uint32_t close_duration)
+    CustomGarageCover(Switch *door_switch, BinarySensor *open_endstop_sensor, BinarySensor *close_endstop_sensor)
     {
         this->door_switch = door_switch;
+        this->open_endstop_sensor = open_endstop_sensor;
+        this->close_endstop_sensor = close_endstop_sensor;
+        // initialize default values
         this->last_dir = COVER_OPERATION_IDLE;
         this->target_operation = TARGET_OPERATION_NONE;
-        this->switch_interval = switch_interval;
+        this->switch_activation_interval = 0;
+        this->open_duration = 0;
+        this->close_duration = 0;
+    }
+
+    void set_door_timings(uint32_t switch_activation_interval, uint32_t open_duration, uint32_t close_duration)
+    {
+        this->switch_activation_interval = switch_interval;
         this->open_duration = open_duration;
         this->close_duration = close_duration;
     }
 
+    float get_setup_priority() const override { return esphome::setup_priority::DATA; }
+
     void setup() override
     {
-        // This will be called by App.setup()
-        // pinMode(5, INPUT);
+        // check cover position on startup
+        if (if this->open_endstop_sensor->state)
+        {
+            // door is open
+            this->position = COVER_OPEN;
+            this->last_dir = COVER_OPERATION_OPENING;
+        }
+        else if (this->close_endstop_sensor->state)
+        {
+            // door is closed
+            this->position = COVER_CLOSED;
+            this->last_dir = COVER_OPERATION_CLOSING;
+        }
+        else
+        {
+            // door neither closed nor open
+            // assume door its ad middle position
+            this->position = 0.50f;
+        }
+        // assume door is idle. If not once endstop is reached real state will be updated
+        this->current_operation = COVER_OPERATION_IDLE;
+        // publish states
+        this->publish_state(false);
     }
 
     CoverTraits get_traits() override
@@ -83,7 +116,8 @@ public:
         // perform one action if target operation different than current operation
         if (this->target_operation != TARGET_OPERATION_NONE && (static_cast<uint8_t>(this->target_operation) != static_cast<uint8_t>(this->current_operation)))
         {
-            if (now - last_activation > switch_interval)
+            // only activate door if time greater than activation interval
+            if (now - last_activation > switch_activation_interval)
             {
                 ESP_LOGD("CustomGarageCover", "Switch activated");
                 this->do_one_action();
@@ -146,9 +180,11 @@ public:
 
 private:
     Switch *door_switch;                   // switch that activates the door
+    this->open_endstop_sensor;             // binary sensor to detect when door is full open
+    this->close_endstop_sensor;            // binary sensor to detect when door is full closed
     CoverOperation last_dir;               // last door direction (open/close)
     CoverTargetOperation target_operation; // received action to execute
-    uint32_t switch_interval;              // time between switch activations
+    uint32_t switch_activation_interval;   // time between switch activations
     uint32_t open_duration;                // time the door needs to fully open
     uint32_t close_duration;               // time the door needs to fully close
 
@@ -202,7 +238,7 @@ private:
         }
         else
         {
-            // door idle
+            // door idle, check last direction
             if (this->last_dir == COVER_OPERATION_OPENING)
             {
                 // last action open
