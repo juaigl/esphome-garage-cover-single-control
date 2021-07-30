@@ -22,7 +22,7 @@ substitutions:
 packages:
   common: !include common/config_base.yaml
   wifi: !include common/wifi_base.yaml
-  device_base: !include common/cover_base.yaml
+  device_base: !include common/cover_custom_base.yaml
 
 
 # Enable logging
