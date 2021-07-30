@@ -12,9 +12,6 @@ enum CoverTargetOperation : uint8_t
 class CustomGarageCover : public Component, public Cover
 {
 public:
-    CoverOperation last_dir;               // last door direction (open/close)
-    CoverTargetOperation target_operation; // received action to execute
-
     // Constructor
     CustomGarageCover(Switch *door_switch, uint32_t switch_interval, uint32_t open_duration, uint32_t close_duration)
     {
@@ -109,11 +106,51 @@ public:
         }
     }
 
+    void open_endstop_reached()
+    {
+        // stop all current actions
+        this->target_operation = TARGET_OPERATION_NONE;
+        // update states
+        this->current_operation = COVER_OPERATION_IDLE;
+        this->position = COVER_OPEN;
+        this->last_dir = COVER_OPERATION_OPENING;
+        this->publish_state(false);
+    }
+
+    void open_endstop_released()
+    {
+        // set state as closing. This will start position update and reporting
+        this->last_dir = COVER_OPERATION_CLOSING;
+        this->current_operation = COVER_OPERATION_CLOSING;
+        this->publish_state(false);
+    }
+
+    void close_endstop_reached()
+    {
+        // stop all current actions
+        this->target_operation = TARGET_OPERATION_NONE;
+        // update states
+        this->current_operation = COVER_OPERATION_IDLE;
+        this->position = COVER_CLOSED;
+        this->last_dir = COVER_OPERATION_CLOSING;
+        this->publish_state(false);
+    }
+
+    void close_endstop_released()
+    {
+        // set state as opening. This will start position update and reporting
+        this->last_dir = COVER_OPERATION_OPENING;
+        this->current_operation = COVER_OPERATION_OPENING;
+        this->publish_state(false);
+    }
+
 private:
-    Switch *door_switch;      // switch that activates the door
-    uint32_t switch_interval; // time between switch activations
-    uint32_t open_duration;   // time the door needs to fully open
-    uint32_t close_duration;  // time the door needs to fully close
+    Switch *door_switch;                   // switch that activates the door
+    CoverOperation last_dir;               // last door direction (open/close)
+    CoverTargetOperation target_operation; // received action to execute
+    uint32_t switch_interval;              // time between switch activations
+    uint32_t open_duration;                // time the door needs to fully open
+    uint32_t close_duration;               // time the door needs to fully close
 
     void recompute_position()
     {
@@ -180,6 +217,6 @@ private:
             }
         }
         // send current state
-        this->publish_state();
+        this->publish_state(false);
     }
 };

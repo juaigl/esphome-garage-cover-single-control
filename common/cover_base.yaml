@@ -44,22 +44,15 @@ binary_sensor:
       then:
         - lambda: |-
             auto custom_door = static_cast<CustomGarageCover *>(id(garage_door));
-            // stop all current actions
-            custom_door->target_operation = TARGET_OPERATION_NONE;
-            // update states
-            custom_door->current_operation = esphome::cover::COVER_OPERATION_IDLE;
-            custom_door->position = esphome::cover::COVER_OPEN;
-            custom_door->last_dir = esphome::cover::COVER_OPERATION_OPENING;
-            custom_door->publish_state();
+            // notify sensor endstop reached
+            custom_door->open_endstop_reached();
     on_release:
       # door was commanded manually (not esphome)
       then:
         - lambda: |-
             auto custom_door = static_cast<CustomGarageCover *>(id(garage_door));
-            // set state as closing. This will start position update and reporting
-            custom_door->last_dir = esphome::cover::COVER_OPERATION_CLOSING;
-            custom_door->current_operation = esphome::cover::COVER_OPERATION_CLOSING;
-            custom_door->publish_state();
+            // notify sensor endstop released
+            custom_door->open_endstop_released();
 
   - platform: gpio
     pin:
@@ -75,22 +68,15 @@ binary_sensor:
       then:
         - lambda: |-
             auto custom_door = static_cast<CustomGarageCover *>(id(garage_door));
-            // stop all current actions
-            custom_door->target_operation = TARGET_OPERATION_NONE;
-            // update states
-            custom_door->current_operation = esphome::cover::COVER_OPERATION_IDLE;
-            custom_door->position = esphome::cover::COVER_CLOSED;
-            custom_door->last_dir = esphome::cover::COVER_OPERATION_CLOSING;
-            custom_door->publish_state();
+            // notify sensor endstop reached
+            custom_door->close_endstop_reached();
     on_release:
       # door was commanded manually (not esphome)
       then:
         - lambda: |-
             auto custom_door = static_cast<CustomGarageCover *>(id(garage_door));
-            // set state as opening. This will start position update and reporting
-            custom_door->last_dir = esphome::cover::COVER_OPERATION_OPENING;
-            custom_door->current_operation = esphome::cover::COVER_OPERATION_OPENING;
-            custom_door->publish_state();
+            // notify sensor endstop released
+            custom_door->close_endstop_released();
 
 switch:
   - platform: gpio
