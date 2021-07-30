@@ -1,11 +1,12 @@
 #include "esphome.h"
 
-enum Action : uint8_t
+enum CoverTargetOperation : uint8_t
 {
-    ACTION_IDLE = 0,
-    ACTION_OPEN,
-    ACTION_CLOSE,
-    ACTION_NONE,
+    // order matters to match CoverOperation enum
+    TARGET_OPERATION_IDLE = 0,
+    TARGET_OPERATION_OPEN,
+    TARGET_OPERATION_CLOSE,
+    TARGET_OPERATION_NONE,
 };
 
 class CustomGarageCover : public Component, public Cover
@@ -40,12 +41,13 @@ public:
             if (pos != this->position)
             {
                 // not at target
-                target_action = pos < this->position ? ACTION_CLOSE : ACTION_OPEN;
+                // calculate target operation
+                this->target_operation = pos < this->position ? TARGET_OPERATION_CLOSE : TARGET_OPERATION_OPEN;
             }
         }
         if (call.get_stop())
         {
-            target_action = ACTION_IDLE;
+            this->target_operation = TARGET_OPERATION_IDLE;
         }
     }
 
@@ -54,54 +56,55 @@ public:
         // This will be called by App.loop()
 
         static uint32_t last_publish_time = 0;
-        static uint32_t last_push_time = 0;
+        static uint32_t last_activation = 0;
 
         // store current time
         const uint32_t now = millis();
 
-        // Recompute position every loop cycle
+        // recompute position every loop cycle
         this->recompute_position();
 
-        // push button if target action different than current operation
-        if (target_action != ACTION_NONE && target_action != this->current_operation)
+        // perform one action if target action different than current operation
+        if (this->target_operation != TARGET_OPERATION_NONE && (static_cast<uint8_t>(this->target_operation) != static_cast<uint8_t>(this->current_operation)))
         {
-            if (now - last_push_time > push_interval)
+            if (now - last_activation > switch_interval)
             {
-                this->push_button();
-                last_push_time = now;
+                this->do_one_action();
+                last_activation = now;
             }
         }
-        else if (target_action == this->current_operation)
+        else if (static_cast<uint8_t>(this->target_operation) == static_cast<uint8_t>(this->current_operation))
         {
-            // target reached, set target as None (3).
+            // target reached, set target as None.
             ESP_LOGD("target", "Target Reached");
-            target_action = ACTION_NONE;
+            this->target_operation = TARGET_OPERATION_NONE;
         }
 
-        // Send current position every second
-        if (this->current_operation != COVER_OPERATION_IDLE && now - this->last_publish_time_ > 1000)
+        // send current position every second
+        if (this->current_operation != COVER_OPERATION_IDLE && (now - last_publish_time) > 1000)
         {
             this->publish_state(false);
-            this->last_publish_time_ = now;
+            last_publish_time = now;
         }
     }
 
 private:
-    CoverOperation last_dir;
-    Action target_action = ACTION_NONE;
-    uint32_t push_interval;
-    uint32_t open_duration;
-    uint32_t close_duration;
+    CoverOperation last_dir;                                       // last door direction (open/close)
+    CoverTargetOperation target_operation = TARGET_OPERATION_NONE; // received action to execute
+    uint32_t push_interval;                                        // time between switch activations
+    uint32_t open_duration;                                        // time the door needs to fully open
+    uint32_t close_duration;                                       // time the door needs to fully close
 
     void recompute_position()
     {
-        // Recalculates door position
+        // recalculates door position
 
         static uint32_t last_recompute_time = 0;
         // store current time
         const uint32_t now = millis();
 
-        if (this->current_operation != COVER_OPERATION_IDLE) // Door moving
+        // only recompute position if door is moving
+        if (this->current_operation != COVER_OPERATION_IDLE)
         {
             float dir;
             float action_dur;
@@ -121,19 +124,18 @@ private:
             }
             // calculate position
             float position = this->position;
-            position += dir * (now - last_recompute_time) / action_dur;
+            position += (dir * (now - last_recompute_time)) / action_dur;
             this->position = clamp(position, 0.0f, 1.0f);
         }
         // store time
         last_recompute_time = now;
     }
 
-    void push_button()
+    void do_one_action()
     {
-        // Activates the door switch
-        // TODO add door switch call
+        // Activates the door switch and update state
 
-        // Cover state machine
+        // cover state machine
         if (this->current_operation == COVER_OPERATION_OPENING || this->current_operation == COVER_OPERATION_CLOSING)
         {
             // door moving
