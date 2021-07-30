@@ -50,6 +50,8 @@ public:
             // get requested position
             float pos = *call.get_position();
 
+            ESP_LOGD("CustomGarageCover", "Position command received: %0.2f", pos);
+
             if (pos != this->position)
             {
                 // not at target
@@ -59,6 +61,8 @@ public:
         }
         if (call.get_stop())
         {
+            ESP_LOGD("CustomGarageCover", "Stop command received.");
+
             this->target_operation = TARGET_OPERATION_IDLE;
         }
     }
@@ -81,14 +85,16 @@ public:
         {
             if (now - last_activation > switch_interval)
             {
+                ESP_LOGD("CustomGarageCover", "Switch activated");
                 this->do_one_action();
                 last_activation = now;
+                last_publish_time = now;
             }
         }
         else if (static_cast<uint8_t>(this->target_operation) == static_cast<uint8_t>(this->current_operation))
         {
             // target reached, set target as None.
-            ESP_LOGD("target", "Target Reached");
+            ESP_LOGD("CustomGarageCover", "Target operation reached");
             this->target_operation = TARGET_OPERATION_NONE;
         }
 
