@@ -63,7 +63,10 @@ public:
         {
             ESP_LOGD("CustomGarageCover", "Stop command received.");
 
-            this->target_operation = TARGET_OPERATION_IDLE;
+            if (this->current_operation != COVER_OPERATION_IDLE)
+            {
+                this->target_operation = TARGET_OPERATION_IDLE;
+            }
         }
     }
 
@@ -107,10 +110,10 @@ public:
     }
 
 private:
-    Switch *door_switch;     // switch that activates the door
-    uint32_t push_interval;  // time between switch activations
-    uint32_t open_duration;  // time the door needs to fully open
-    uint32_t close_duration; // time the door needs to fully close
+    Switch *door_switch;      // switch that activates the door
+    uint32_t switch_interval; // time between switch activations
+    uint32_t open_duration;   // time the door needs to fully open
+    uint32_t close_duration;  // time the door needs to fully close
 
     void recompute_position()
     {
