@@ -35,7 +35,7 @@ public:
 
     void set_door_timings(uint32_t switch_activation_interval, uint32_t open_duration, uint32_t close_duration)
     {
-        this->switch_activation_interval = switch_interval;
+        this->switch_activation_interval = switch_activation_interval;
         this->open_duration = open_duration;
         this->close_duration = close_duration;
     }
@@ -45,7 +45,7 @@ public:
     void setup() override
     {
         // check cover position on startup
-        if (if this->open_endstop_sensor->state)
+        if (this->open_endstop_sensor->state)
         {
             // door is open
             this->position = COVER_OPEN;
