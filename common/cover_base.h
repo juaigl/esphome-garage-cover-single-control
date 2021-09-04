@@ -3,10 +3,17 @@
 enum CoverTargetOperation : uint8_t
 {
     // order matters to match CoverOperation enum
+
+    // stop door
     TARGET_OPERATION_IDLE = 0,
+    // open door
     TARGET_OPERATION_OPEN,
+    // close door
     TARGET_OPERATION_CLOSE,
+    // do nothing (no action)
     TARGET_OPERATION_NONE,
+    // activate door switch once
+    TARGET_OPERATION_ACTIVATE_ONCE,
 };
 
 class CustomGarageCover : public Component, public Cover
@@ -123,6 +130,12 @@ public:
                 this->do_one_action();
                 last_activation = now;
                 last_publish_time = now;
+
+                // if door was commanded to activate once, delete target operation
+                if (target_operation == TARGET_OPERATION_ACTIVATE_ONCE)
+                {
+                    target_operation = TARGET_OPERATION_NONE;
+                }
             }
         }
         else if (static_cast<uint8_t>(this->target_operation) == static_cast<uint8_t>(this->current_operation))
@@ -176,6 +189,12 @@ public:
         this->last_dir = COVER_OPERATION_OPENING;
         this->current_operation = COVER_OPERATION_OPENING;
         this->publish_state(false);
+    }
+
+    void activate_door()
+    {
+        ESP_LOGD("CustomGarageCover", "Activate once command received");
+        this->target_operation = TARGET_OPERATION_ACTIVATE_ONCE;
     }
 
 private:
