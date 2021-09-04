@@ -46,5 +46,5 @@ binary_sensor:
       then:
         - lambda: |-
             auto custom_door = static_cast<CustomGarageCover *>(id(garage_door));
-            // notify sensor endstop reached
+            // external switch pressed
             custom_door->activate_door();

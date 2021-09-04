@@ -28,6 +28,8 @@ public:
         // initialize default values
         this->last_dir = COVER_OPERATION_IDLE;
         this->target_operation = TARGET_OPERATION_NONE;
+        // assume door is idle. If not once onr endstop is reached real state will be updated
+        this->current_operation = COVER_OPERATION_IDLE;
         this->switch_activation_interval = 0;
         this->open_duration = 0;
         this->close_duration = 0;
@@ -40,7 +42,7 @@ public:
         this->close_duration = close_duration;
     }
 
-    float get_setup_priority() const override { return esphome::setup_priority::DATA; }
+    float get_setup_priority() const override { return esphome::setup_priority::WIFI; }
 
     void setup() override
     {
@@ -63,8 +65,6 @@ public:
             // assume door its ad middle position
             this->position = 0.50f;
         }
-        // assume door is idle. If not once endstop is reached real state will be updated
-        this->current_operation = COVER_OPERATION_IDLE;
         // publish states
         this->publish_state(false);
     }
