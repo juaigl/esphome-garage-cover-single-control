@@ -13,7 +13,7 @@ class CustomGarageCover : public Component, public Cover
 {
 public:
     // Constructor
-    CustomGarageCover(Switch *door_switch, BinarySensor *open_endstop_sensor, BinarySensor *close_endstop_sensor)
+    CustomGarageCover(switch_::Switch *door_switch, binary_sensor::BinarySensor *open_endstop_sensor, binary_sensor::BinarySensor *close_endstop_sensor)
     {
         this->door_switch = door_switch;
         this->open_endstop_sensor = open_endstop_sensor;
@@ -179,14 +179,14 @@ public:
     }
 
 private:
-    Switch *door_switch;                   // switch that activates the door
-    this->open_endstop_sensor;             // binary sensor to detect when door is full open
-    this->close_endstop_sensor;            // binary sensor to detect when door is full closed
-    CoverOperation last_dir;               // last door direction (open/close)
-    CoverTargetOperation target_operation; // received action to execute
-    uint32_t switch_activation_interval;   // time between switch activations
-    uint32_t open_duration;                // time the door needs to fully open
-    uint32_t close_duration;               // time the door needs to fully close
+    switch_::Switch *door_switch;                      // switch that activates the door
+    binary_sensor::BinarySensor *open_endstop_sensor;  // binary sensor to detect when door is full open
+    binary_sensor::BinarySensor *close_endstop_sensor; // binary sensor to detect when door is full closed
+    cover::CoverOperation last_dir;                    // last door direction (open/close)
+    CoverTargetOperation target_operation;             // received action to execute
+    uint32_t switch_activation_interval;               // time between switch activations
+    uint32_t open_duration;                            // time the door needs to fully open
+    uint32_t close_duration;                           // time the door needs to fully close
 
     void recompute_position()
     {
