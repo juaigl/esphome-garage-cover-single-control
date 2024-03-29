@@ -1,0 +1,109 @@
+substitutions:
+  # device config
+  device_name: sc_example
+  cover_id: sc_cover_example
+  platform: ESP32
+  board: nodemcu-32s
+
+  # cover config
+  open_duration: 30s # seconds
+  close_duration: 30s # seconds
+  cover_device_class: garage
+
+  # switch config
+  cover_switch_pin: GPIO17 # gpio pin that triggers the door opening/closing/stop
+  active_switch_duration: 100ms # amount of time relay is closed
+  switch_interval: 1500ms # milliseconds
+
+  # endstop config
+  open_endstop_pin: GPIO18 # gpio pin for open endstop sensor
+  close_endstop_pin: GPIO19 # gpio pin for close endstop sensor
+  debounce_time: 100ms # debounce time for open/close endstops
+
+esphome:
+  name: $device_name
+  platform: $platform
+  board: $board
+
+external_components:
+  - source: github://juaigl/esphome-garage-cover-single-control@main
+
+wifi:
+  # replace by your own data
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: $device_name Fallback Hotspot
+    password: !secret esphome_fallback_wifi_password
+
+captive_portal:
+
+api:
+  encryption:
+    # replace by your key
+    key: !secret esphome_encryption_key
+
+ota:
+  # replace by your password
+  password: !secret esphome_api_ota_password
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: $open_endstop_pin
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "Open Endstop Sensor"
+    id: open_endstop
+    internal: true
+    filters:
+      - delayed_on_off: $debounce_time
+
+  - platform: gpio
+    pin:
+      number: $close_endstop_pin
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "Close Endstop Sensor"
+    id: close_endstop
+    internal: true
+    filters:
+      - delayed_on_off: $debounce_time
+
+  # Example of an external switch/button to command the door
+  - platform: gpio
+    pin:
+      number: GPIO22
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "Cover External Button"
+    id: cover_external_button
+    internal: false
+    filters:
+      - delayed_on_off: 100ms
+    on_press:
+      then:
+        - cover.toggle: $cover_id
+
+switch:
+  - platform: gpio
+    pin: $cover_switch_pin
+    name: "Cover Switch"
+    id: cover_switch
+    internal: true
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: $active_switch_duration
+      - switch.turn_off: cover_switch
+
+cover:
+  - platform: sc_cover
+    name: $cover_id
+    id: $cover_id
+    device_class: $cover_device_class
+    door_switch: cover_switch
+    open_endstop: open_endstop
+    close_endstop: close_endstop
+    switch_interval: $switch_interval
+    open_duration: $open_duration
+    close_duration: $close_duration
