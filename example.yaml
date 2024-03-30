@@ -26,7 +26,7 @@ esphome:
   board: $board
 
 external_components:
-  - source: github://juaigl/esphome-garage-cover-single-control@main
+  - source: github://juaigl/esphome-garage-cover-single-control@master
 
 wifi:
   # replace by your own data
