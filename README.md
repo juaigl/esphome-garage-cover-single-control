@@ -18,8 +18,8 @@ state machine:
 
 ## Project features
 
-* Position reporting based on time (no position control for now)
-* Calculate the number of times the control need to be activated to perform the action requested
+* Position control
+* Calculate the number of times the control need to be activated to perform the action requested or reach requested position
 * Actuate the door many times as needed to perform requested action. For example if position in memory is wrong or unknow because a external control stops the door at middle.
 * Detect and update position when the cover is externally commanded. Only if door is full open or closed when commanded or reachs end stop sensors.
 * Configuration options for GPIOs, debounce time, open/close durations. time between control actuation...
@@ -55,6 +55,5 @@ The door logic is placed at file [config_base.yaml](common/config_base.yaml)
 
 ## TODO
 
-* Migrate to custom component
+* Migrate to external component
 * Detect if door is stopped at middle when commanded externally
-* Position control
