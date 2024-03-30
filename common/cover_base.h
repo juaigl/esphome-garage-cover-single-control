@@ -140,6 +140,14 @@ public:
                 if (this->target_operation == TARGET_OPERATION_ACTIVATE_ONCE)
                 {
                     this->target_operation = TARGET_OPERATION_NONE;
+                    if (this->current_operation == COVER_OPERATION_CLOSING)
+                    {
+                        this->target_position = COVER_CLOSED;
+                    }
+                    else if (this->current_operation == COVER_OPERATION_OPENING)
+                    {
+                        this->target_position = COVER_OPEN;
+                    }
                 }
             }
         }
