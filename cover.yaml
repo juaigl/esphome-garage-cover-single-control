@@ -1,6 +1,6 @@
 substitutions:
   # device config
-  device_name: portal_dev
+  device_name: portal-dev
   platform: ESP32
   board: nodemcu-32s
 
@@ -30,16 +30,21 @@ logger:
   level: INFO
   # level: DEBUG
 
-# debug switch for logging
-# switch:
-#   - platform: template
-#     name: "log it"
-#     id: log_it
-#     lambda: !lambda |-
-#       return true;
-#     turn_on_action:
-#       - lambda: !lambda |-
-#           ESP_LOGD("log_it", "LOG CO:%u PO:%f LD:%u", id(garage_door).current_operation,  id(garage_door).position, id(last_dir));
-#     turn_off_action:
-#       - lambda: !lambda |-
-#           ESP_LOGD("log_it", "LOG CO:%u PO:%f LD:%u", id(garage_door).current_operation,  id(garage_door).position, id(last_dir));
+# Example of an external switch to command the door
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO22
+      mode: INPUT_PULLUP
+      inverted: true
+    name: Cover Button
+    id: cover_button
+    internal: true
+    filters:
+      - delayed_on_off: 100ms
+    on_press:
+      then:
+        - lambda: |-
+            auto custom_door = static_cast<CustomGarageCover *>(id(garage_door));
+            // external switch pressed
+            custom_door->activate_door();

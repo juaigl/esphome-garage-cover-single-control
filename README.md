@@ -18,8 +18,8 @@ state machine:
 
 ## Project features
 
-* Position reporting based on time (no position control for now)
-* Calculate the number of times the control need to be activated to perform the action requested
+* Position control
+* Calculate the number of times the control need to be activated to perform the action requested or reach requested position
 * Actuate the door many times as needed to perform requested action. For example if position in memory is wrong or unknow because a external control stops the door at middle.
 * Detect and update position when the cover is externally commanded. Only if door is full open or closed when commanded or reachs end stop sensors.
 * Configuration options for GPIOs, debounce time, open/close durations. time between control actuation...
@@ -39,7 +39,7 @@ wifi_password: your wifi password
 You can change the name of the previous variables editing config_base.yaml and wifi_base.yaml
 
 Note: secrets.yaml will inherit all your data from home assistant secrets.yaml. It's possible that you need to
-edit [this line](https://github.com/juaigl/esphome-single-button-cover/blob/master/common/secrets.yaml#L1) to point yo
+edit [this line](https://github.com/juaigl/esphome-single-button-cover/blob/master/common/secrets.yaml#L1) to point to
 your home assistant secrets.yaml. If you want to change this behavior, delete the line and define the variables there.
 
 ```yaml
@@ -55,6 +55,5 @@ The door logic is placed at file [config_base.yaml](common/config_base.yaml)
 
 ## TODO
 
-* Migrate to custom component
+* Migrate to external component
 * Detect if door is stopped at middle when commanded externally
-* Position control
