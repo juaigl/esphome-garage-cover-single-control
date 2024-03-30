@@ -124,7 +124,7 @@ public:
         const uint32_t now = millis();
 
         // recompute position every loop cycle
-        this->recompute_position();
+        this->recompute_position(now);
 
         // perform one action if target operation different than current operation
         if (this->target_operation != TARGET_OPERATION_NONE && (static_cast<uint8_t>(this->target_operation) != static_cast<uint8_t>(this->current_operation)))
@@ -160,7 +160,7 @@ public:
         }
 
         // when all operations are done and if door is not idling check if target position was reached
-        else if (this->target_operation == TARGET_OPERATION_NONE && this->current_operation != COVER_OPERATION_IDLE)
+        else if (this->current_operation != COVER_OPERATION_IDLE)
         {
             // do not stop door if position requested is FULL OPEN or FULL CLOSE
             // in these cases door will be stopped by end_stop sensors
@@ -244,13 +244,11 @@ private:
     uint32_t open_duration;                            // time the door needs to fully open
     uint32_t close_duration;                           // time the door needs to fully close
 
-    void recompute_position()
+    void recompute_position(const uint32_t now)
     {
         // recalculates door position
 
         static uint32_t last_recompute_time = 0;
-        // store current time
-        const uint32_t now = millis();
 
         // only recompute position if door is moving
         if (this->current_operation != COVER_OPERATION_IDLE)
@@ -287,10 +285,11 @@ private:
         // activate switch
         ESP_LOGD("CustomGarageCover", "Switch activated");
         this->door_switch->turn_on();
-        // cover state machine
+
+        // cover state machine (recompute current operation)
         if (this->current_operation == COVER_OPERATION_OPENING || this->current_operation == COVER_OPERATION_CLOSING)
         {
-            // door moving
+            // door moving -> Stop
             this->current_operation = COVER_OPERATION_IDLE;
         }
         else
@@ -298,13 +297,13 @@ private:
             // door idle, check last direction
             if (this->last_dir == COVER_OPERATION_OPENING)
             {
-                // last action open
+                // last action open -> Close
                 this->current_operation = COVER_OPERATION_CLOSING;
                 this->last_dir = COVER_OPERATION_CLOSING;
             }
             else
             {
-                // last action close
+                // last action close -> Open
                 this->current_operation = COVER_OPERATION_OPENING;
                 this->last_dir = COVER_OPERATION_OPENING;
             }
