@@ -26,34 +26,9 @@ state machine:
 
 ## Instructions
 
-* Copy this files to your esphome directory in home assistant
-* Modify cover.yaml with your desired configuration
-* Define the following variables in your home assistant secrets.yaml
-
-```yaml
-esphome_api_ota_password: password used for esphome api and ota update
-wifi_ssid: your wifi ssid
-wifi_password: your wifi password
-```
-
-You can change the name of the previous variables editing config_base.yaml and wifi_base.yaml
-
-Note: secrets.yaml will inherit all your data from home assistant secrets.yaml. It's possible that you need to
-edit [this line](https://github.com/juaigl/esphome-single-button-cover/blob/master/common/secrets.yaml#L1) to point to
-your home assistant secrets.yaml. If you want to change this behavior, delete the line and define the variables there.
-
-```yaml
-<<: !include ../../secrets.yaml
-```
-
-## Code
-
-The code is divided in packages to allow easy configuration and reutilization.  
-[cover.yaml](cover.yaml) is the main file that contains configuration options and import the used packages.
-
-The door logic is placed at file [config_base.yaml](common/config_base.yaml)
+* Use this repo as an [external component](https://esphome.io/components/external_components)
+* Check the [example](example.yaml) provided in this repo
 
 ## TODO
 
-* Migrate to external component
 * Detect if door is stopped at middle when commanded externally
