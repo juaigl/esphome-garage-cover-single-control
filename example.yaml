@@ -1,9 +1,13 @@
+# add your board config
+esp32:
+  board: nodemcu-32s
+  framework:
+    type: esp-idf
+
 substitutions:
   # device config
   device_name: sc_example
   cover_id: sc_cover_example
-  platform: ESP32
-  board: nodemcu-32s
 
   # cover config
   open_duration: 30s # seconds
@@ -22,8 +26,6 @@ substitutions:
 
 esphome:
   name: $device_name
-  platform: $platform
-  board: $board
 
 external_components:
   - source: github://juaigl/esphome-garage-cover-single-control@master
@@ -45,7 +47,8 @@ api:
 
 ota:
   # replace by your password
-  password: !secret esphome_api_ota_password
+  - platform: esphome
+    password: !secret esphome_api_ota_password
 
 binary_sensor:
   - platform: gpio
