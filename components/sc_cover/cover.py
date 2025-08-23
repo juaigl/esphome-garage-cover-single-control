@@ -15,18 +15,20 @@ CONF_SWITCH_INTERVAL = "switch_interval"
 sc_cover_ns = cg.esphome_ns.namespace("sc_cover")
 SingleControlCover = sc_cover_ns.class_("SingleControlCover", cover.Cover, cg.Component)
 
-CONFIG_SCHEMA = cover.COVER_SCHEMA.extend(
-    {
-        cv.GenerateID(): cv.declare_id(SingleControlCover),
-        cv.Required(CONF_DOOR_SWITCH): cv.use_id(switch.Switch),
-        cv.Required(CONF_SWITCH_INTERVAL): cv.positive_time_period_milliseconds,
-        cv.Required(CONF_OPEN_ENDSTOP): cv.use_id(binary_sensor.BinarySensor),
-        cv.Required(CONF_OPEN_DURATION): cv.positive_time_period_milliseconds,
-        cv.Required(CONF_CLOSE_ENDSTOP): cv.use_id(binary_sensor.BinarySensor),
-        cv.Required(CONF_CLOSE_DURATION): cv.positive_time_period_milliseconds,
-    }
-).extend(cv.COMPONENT_SCHEMA)
-
+CONFIG_SCHEMA = (
+    cover.cover_schema(SingleControlCover)
+    .extend(
+        {
+            cv.Required(CONF_DOOR_SWITCH): cv.use_id(switch.Switch),
+            cv.Required(CONF_SWITCH_INTERVAL): cv.positive_time_period_milliseconds,
+            cv.Required(CONF_OPEN_ENDSTOP): cv.use_id(binary_sensor.BinarySensor),
+            cv.Required(CONF_OPEN_DURATION): cv.positive_time_period_milliseconds,
+            cv.Required(CONF_CLOSE_ENDSTOP): cv.use_id(binary_sensor.BinarySensor),
+            cv.Required(CONF_CLOSE_DURATION): cv.positive_time_period_milliseconds,
+        }
+    )
+    .extend(cv.COMPONENT_SCHEMA)
+)
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
