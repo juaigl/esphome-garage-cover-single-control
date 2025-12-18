@@ -17,7 +17,7 @@ substitutions:
   # switch config
   cover_switch_pin: GPIO17 # gpio pin that triggers the door opening/closing/stop
   active_switch_duration: 100ms # amount of time relay is closed
-  switch_interval: 1500ms # milliseconds
+  switch_interval: 1500ms # time between switch activations
 
   # endstop config
   open_endstop_pin: GPIO18 # gpio pin for open endstop sensor
@@ -94,25 +94,28 @@ binary_sensor:
       then:
         - cover.toggle: $cover_id
 
-switch:
+output:
   - platform: gpio
     pin: $cover_switch_pin
-    name: "Cover Switch"
     id: cover_switch
+
+button:
+  - platform: output
+    name: "Cover Button"
+    id: cover_button
+    output: cover_switch
+    duration: $active_switch_duration
     internal: true
-    restore_mode: ALWAYS_OFF
-    on_turn_on:
-      - delay: $active_switch_duration
-      - switch.turn_off: cover_switch
+
 
 cover:
   - platform: sc_cover
     name: $cover_id
     id: $cover_id
     device_class: $cover_device_class
-    door_switch: cover_switch
+    door_activate_button: cover_button
     open_endstop: open_endstop
     close_endstop: close_endstop
-    switch_interval: $switch_interval
+    button_press_interval: $switch_interval
     open_duration: $open_duration
     close_duration: $close_duration
