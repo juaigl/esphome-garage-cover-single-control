@@ -4,7 +4,7 @@
 #include "esphome/core/automation.h"
 #include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/cover/cover.h"
-#include "esphome/components/switch/switch.h"
+#include "esphome/components/output/button/output_button.h"
 
 namespace esphome {
 namespace sc_cover {
@@ -31,8 +31,8 @@ class SingleControlCover : public cover::Cover, public Component {
   void dump_config() override;
   float get_setup_priority() const override;
 
-  void set_door_switch(switch_::Switch *door_switch) { this->door_switch_ = door_switch; }
-  void set_switch_interval(uint32_t switch_interval) { this->switch_interval_ = switch_interval; }
+  void set_door_activate_button(output::OutputButton *door_activate_button) { this->door_activate_button_ = door_activate_button; }
+  void set_button_press_interval(uint32_t button_press_interval) { this->button_press_interval_ = button_press_interval; }
   void set_open_endstop(binary_sensor::BinarySensor *open_endstop) { this->open_endstop_ = open_endstop; }
   void set_close_endstop(binary_sensor::BinarySensor *close_endstop) { this->close_endstop_ = close_endstop; }
   void set_open_duration(uint32_t open_duration) { this->open_duration_ = open_duration; }
@@ -49,16 +49,16 @@ class SingleControlCover : public cover::Cover, public Component {
 
   void recompute_position_(const uint32_t now);
 
-  bool activate_switch_();
+  bool activate_door_();
 
   void open_endstop_callback_(bool state);
   void close_endstop_callback_(bool state);
 
-  switch_::Switch *door_switch_;
+  output::OutputButton *door_activate_button_;
   binary_sensor::BinarySensor *open_endstop_;
   binary_sensor::BinarySensor *close_endstop_;
   bool toggle_{false};
-  uint32_t switch_interval_;
+  uint32_t button_press_interval_;
   uint32_t open_duration_;
   uint32_t close_duration_;
 
