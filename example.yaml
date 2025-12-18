@@ -6,7 +6,7 @@ esp32:
 
 substitutions:
   # device config
-  device_name: sc_example
+  device_name: sc-example
   cover_id: sc_cover_example
 
   # cover config
@@ -54,7 +54,9 @@ binary_sensor:
   - platform: gpio
     pin:
       number: $open_endstop_pin
-      mode: INPUT_PULLUP
+      mode:
+        input: true
+        pullup: true
       inverted: true
     name: "Open Endstop Sensor"
     id: open_endstop
@@ -65,7 +67,9 @@ binary_sensor:
   - platform: gpio
     pin:
       number: $close_endstop_pin
-      mode: INPUT_PULLUP
+      mode:
+        input: true
+        pullup: true
       inverted: true
     name: "Close Endstop Sensor"
     id: close_endstop
@@ -77,7 +81,9 @@ binary_sensor:
   - platform: gpio
     pin:
       number: GPIO22
-      mode: INPUT_PULLUP
+      mode:
+        input: true
+        pullup: true
       inverted: true
     name: "Cover External Button"
     id: cover_external_button
