@@ -3,8 +3,8 @@
 #include "esphome/core/component.h"
 #include "esphome/core/automation.h"
 #include "esphome/components/binary_sensor/binary_sensor.h"
+#include "esphome/components/button/button.h"
 #include "esphome/components/cover/cover.h"
-#include "esphome/components/output/button/output_button.h"
 
 namespace esphome {
 namespace sc_cover {
@@ -31,7 +31,7 @@ class SingleControlCover : public cover::Cover, public Component {
   void dump_config() override;
   float get_setup_priority() const override;
 
-  void set_door_activate_button(output::OutputButton *door_activate_button) { this->door_activate_button_ = door_activate_button; }
+  void set_door_activate_button(button::Button *door_activate_button) { this->door_activate_button_ = door_activate_button; }
   void set_button_press_interval(uint32_t button_press_interval) { this->button_press_interval_ = button_press_interval; }
   void set_open_endstop(binary_sensor::BinarySensor *open_endstop) { this->open_endstop_ = open_endstop; }
   void set_close_endstop(binary_sensor::BinarySensor *close_endstop) { this->close_endstop_ = close_endstop; }
@@ -54,7 +54,7 @@ class SingleControlCover : public cover::Cover, public Component {
   void open_endstop_callback_(bool state);
   void close_endstop_callback_(bool state);
 
-  output::OutputButton *door_activate_button_;
+  button::Button *door_activate_button_;
   binary_sensor::BinarySensor *open_endstop_;
   binary_sensor::BinarySensor *close_endstop_;
   bool toggle_{false};
