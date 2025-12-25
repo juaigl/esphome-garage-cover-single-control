@@ -22,8 +22,8 @@ CoverTraits SingleControlCover::get_traits() {
 
 void SingleControlCover::dump_config() {
   LOG_COVER("", "SingleControl Cover", this);
-  LOG_SWITCH(" ", "Door Switch", this->door_switch_);
-  ESP_LOGCONFIG(TAG, " Switch Interval:  %.1fs", this->switch_interval_ / 1e3f);
+  LOG_BUTTON(" ", "Door Switch", this->door_activate_button_);
+  ESP_LOGCONFIG(TAG, " Switch Interval:  %.1fs", this->button_press_interval_ / 1e3f);
   LOG_BINARY_SENSOR("  ", "Open Endstop", this->open_endstop_);
   ESP_LOGCONFIG(TAG, "  Open Duration: %.1fs", this->open_duration_ / 1e3f);
   LOG_BINARY_SENSOR("  ", "Close Endstop", this->close_endstop_);
@@ -103,7 +103,7 @@ void SingleControlCover::loop() {
 
   if (this->toggle_) {
     // toggle requested
-    if (this->activate_switch_()) {
+    if (this->activate_door_()) {
       this->toggle_ = false;
       if (this->current_operation == COVER_OPERATION_CLOSING) {
         this->target_position_ = COVER_CLOSED;
@@ -117,7 +117,7 @@ void SingleControlCover::loop() {
 
   else if ((this->target_operation_ != TARGET_OPERATION_NONE) && !this->is_operation_done_()) {
     // target operation not done -> activate switch
-    this->activate_switch_();
+    this->activate_door_();
   }
 
   else if (this->is_operation_done_()) {
@@ -131,7 +131,7 @@ void SingleControlCover::loop() {
 
     // let door stop by itself if FULL_OPEN or FULL_CLOSE requested
     if (this->target_position_ != COVER_CLOSED && this->target_position_ != COVER_OPEN) {
-      this->activate_switch_();
+      this->activate_door_();
     }
   }
 
@@ -177,11 +177,11 @@ void SingleControlCover::recompute_position_(const uint32_t now) {
   this->last_recompute_time_ = now;
 }
 
-bool SingleControlCover::activate_switch_() {
+bool SingleControlCover::activate_door_() {
   // store current time
   const uint32_t now = millis();
 
-  if ((now - this->last_activation_time_) > this->switch_interval_) {
+  if ((now - this->last_activation_time_) > this->button_press_interval_) {
     // cover state machine (recompute current operation)
     if (this->current_operation == COVER_OPERATION_OPENING || this->current_operation == COVER_OPERATION_CLOSING) {
       // door is moving -> new operation: stop (idle)
@@ -201,7 +201,7 @@ bool SingleControlCover::activate_switch_() {
 
     // activate switch
     ESP_LOGD(TAG, "Switch activated");
-    this->door_switch_->turn_on();
+    this->door_activate_button_->press();
 
     // send current state
     this->publish_state(false);
