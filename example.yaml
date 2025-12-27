@@ -24,6 +24,12 @@ substitutions:
   close_endstop_pin: GPIO19 # gpio pin for close endstop sensor
   debounce_time: 100ms # debounce time for open/close endstops
 
+  # setup config
+  # If your endstops take a while to configure (eg with debounce)
+  # Then you can set this.  If you do, it should be longer than
+  # the debouce time, plus around 50ms.
+  setup_delay: 200ms
+
 esphome:
   name: $device_name
 
@@ -114,6 +120,7 @@ cover:
     id: $cover_id
     device_class: $cover_device_class
     door_activate_button: cover_button
+    setup_delay: $setup_delay
     open_endstop: open_endstop
     close_endstop: close_endstop
     button_press_interval: $switch_interval
