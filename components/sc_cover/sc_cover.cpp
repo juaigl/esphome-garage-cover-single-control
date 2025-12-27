@@ -23,6 +23,7 @@ CoverTraits SingleControlCover::get_traits() {
 void SingleControlCover::dump_config() {
   LOG_COVER("", "SingleControl Cover", this);
   LOG_BUTTON(" ", "Door Switch", this->door_activate_button_);
+  ESP_LOGCONFIG(TAG, " Setup delay: %.1fs", this->setup_delay_ /1e3f);
   ESP_LOGCONFIG(TAG, " Switch Interval:  %.1fs", this->button_press_interval_ / 1e3f);
   LOG_BINARY_SENSOR("  ", "Open Endstop", this->open_endstop_);
   ESP_LOGCONFIG(TAG, "  Open Duration: %.1fs", this->open_duration_ / 1e3f);
@@ -36,6 +37,14 @@ void SingleControlCover::setup() {
   this->open_endstop_->add_on_state_callback([this](bool state) { this->open_endstop_callback_(state); });
   this->close_endstop_->add_on_state_callback([this](bool state) { this->close_endstop_callback_(state); });
 
+  this->do_setup_();
+
+  if (this->setup_delay_ > 0) {
+    this->set_timeout(this->setup_delay_, [this] { this->do_setup_(); });
+  }
+}
+
+void SingleControlCover::do_setup_() {
   if (this->is_open_()) {
     // door is open
     this->position = COVER_OPEN;
